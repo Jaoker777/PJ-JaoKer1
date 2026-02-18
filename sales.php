@@ -1,6 +1,9 @@
 <?php
 require_once 'db.php';
+require_once 'auth.php';
+requireLogin();
 
+$currentUser = getCurrentUser();
 $message = '';
 $messageType = '';
 
@@ -94,7 +97,7 @@ $salesHistory = $pdo->query("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sales — Gaming Store</title>
+    <title>Sales — Nournia Shop</title>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -102,14 +105,24 @@ $salesHistory = $pdo->query("
     <!-- Sidebar -->
     <aside class="sidebar">
         <div class="sidebar-brand">
-            <h1>🎮 Gaming Store</h1>
-            <span>Inventory System</span>
+            <h1>🎮 Nournia Shop</h1>
+            <span>Gaming Gear Store</span>
         </div>
         <ul class="sidebar-nav">
             <li><a href="index.php"><span class="icon">📊</span> Dashboard</a></li>
             <li><a href="products.php"><span class="icon">📦</span> Products</a></li>
             <li><a href="sales.php" class="active"><span class="icon">💰</span> Sales</a></li>
         </ul>
+        <div class="sidebar-user">
+            <div class="user-info">
+                <div class="user-avatar"><?= strtoupper(mb_substr($currentUser['username'], 0, 1)) ?></div>
+                <div class="user-details">
+                    <span class="user-name"><?= htmlspecialchars($currentUser['username']) ?></span>
+                    <span class="user-role <?= $currentUser['role'] ?>"><?= $currentUser['role'] === 'admin' ? '🛠 Admin' : '👤 User' ?></span>
+                </div>
+            </div>
+            <a href="logout.php" class="btn-logout" title="ออกจากระบบ">🚪</a>
+        </div>
     </aside>
 
     <!-- Main -->

@@ -1,6 +1,6 @@
 <?php
 $host = 'db';
-$dbname = 'gaming_store';
+$dbname = 'nournia_shop';
 $username = 'user';
 $password = 'password';
 

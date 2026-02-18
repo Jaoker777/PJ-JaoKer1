@@ -3,7 +3,7 @@ version: '3.8'
 services:
   php:
     build: .
-    container_name: stock_php_99
+    container_name: nournia_php
     ports:
       - "8001:80"
     volumes:
@@ -15,10 +15,10 @@ services:
 
   db:
     image: mariadb:10.6
-    container_name: stock_db_99
+    container_name: nournia_db
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: gaming_store
+      MYSQL_DATABASE: nournia_shop
       MYSQL_USER: user
       MYSQL_PASSWORD: password
     volumes:
@@ -29,7 +29,7 @@ services:
 
   phpmyadmin:
     image: phpmyadmin:latest
-    container_name: stock_pma_99
+    container_name: nournia_pma
     ports:
       - "8080:80"
     environment:

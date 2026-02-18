@@ -1,56 +1,62 @@
 <?php
 require_once 'db.php';
+require_once 'auth.php';
+requireLogin();
 
+$currentUser = getCurrentUser();
 $message = '';
 $messageType = '';
 
-// Handle DELETE
-if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
-    $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
-    $stmt->execute([$id]);
-    $message = 'ลบสินค้าเรียบร้อยแล้ว';
-    $messageType = 'success';
-}
-
-// Handle ADD
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add') {
-    $name = trim($_POST['name'] ?? '');
-    $category_id = (int)($_POST['category_id'] ?? 0);
-    $price = (float)($_POST['price'] ?? 0);
-    $stock = (int)($_POST['stock_quantity'] ?? 0);
-    $description = trim($_POST['description'] ?? '');
-    $image_url = trim($_POST['image_url'] ?? '');
-
-    if ($name && $category_id > 0 && $price > 0) {
-        $stmt = $pdo->prepare("INSERT INTO products (category_id, name, description, price, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$category_id, $name, $description, $price, $stock, $image_url]);
-        $message = 'เพิ่มสินค้าเรียบร้อยแล้ว';
+// Only admin can modify products
+if (isAdmin()) {
+    // Handle DELETE
+    if (isset($_GET['delete'])) {
+        $id = (int)$_GET['delete'];
+        $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
+        $stmt->execute([$id]);
+        $message = 'ลบสินค้าเรียบร้อยแล้ว';
         $messageType = 'success';
-    } else {
-        $message = 'กรุณากรอกข้อมูลให้ครบถ้วน';
-        $messageType = 'danger';
     }
-}
 
-// Handle EDIT
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit') {
-    $id = (int)($_POST['id'] ?? 0);
-    $name = trim($_POST['name'] ?? '');
-    $category_id = (int)($_POST['category_id'] ?? 0);
-    $price = (float)($_POST['price'] ?? 0);
-    $stock = (int)($_POST['stock_quantity'] ?? 0);
-    $description = trim($_POST['description'] ?? '');
-    $image_url = trim($_POST['image_url'] ?? '');
+    // Handle ADD
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add') {
+        $name = trim($_POST['name'] ?? '');
+        $category_id = (int)($_POST['category_id'] ?? 0);
+        $price = (float)($_POST['price'] ?? 0);
+        $stock = (int)($_POST['stock_quantity'] ?? 0);
+        $description = trim($_POST['description'] ?? '');
+        $image_url = trim($_POST['image_url'] ?? '');
 
-    if ($id > 0 && $name && $category_id > 0 && $price > 0) {
-        $stmt = $pdo->prepare("UPDATE products SET category_id = ?, name = ?, description = ?, price = ?, stock_quantity = ?, image_url = ? WHERE id = ?");
-        $stmt->execute([$category_id, $name, $description, $price, $stock, $image_url, $id]);
-        $message = 'แก้ไขสินค้าเรียบร้อยแล้ว';
-        $messageType = 'success';
-    } else {
-        $message = 'กรุณากรอกข้อมูลให้ครบถ้วน';
-        $messageType = 'danger';
+        if ($name && $category_id > 0 && $price > 0) {
+            $stmt = $pdo->prepare("INSERT INTO products (category_id, name, description, price, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$category_id, $name, $description, $price, $stock, $image_url]);
+            $message = 'เพิ่มสินค้าเรียบร้อยแล้ว';
+            $messageType = 'success';
+        } else {
+            $message = 'กรุณากรอกข้อมูลให้ครบถ้วน';
+            $messageType = 'danger';
+        }
+    }
+
+    // Handle EDIT
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit') {
+        $id = (int)($_POST['id'] ?? 0);
+        $name = trim($_POST['name'] ?? '');
+        $category_id = (int)($_POST['category_id'] ?? 0);
+        $price = (float)($_POST['price'] ?? 0);
+        $stock = (int)($_POST['stock_quantity'] ?? 0);
+        $description = trim($_POST['description'] ?? '');
+        $image_url = trim($_POST['image_url'] ?? '');
+
+        if ($id > 0 && $name && $category_id > 0 && $price > 0) {
+            $stmt = $pdo->prepare("UPDATE products SET category_id = ?, name = ?, description = ?, price = ?, stock_quantity = ?, image_url = ? WHERE id = ?");
+            $stmt->execute([$category_id, $name, $description, $price, $stock, $image_url, $id]);
+            $message = 'แก้ไขสินค้าเรียบร้อยแล้ว';
+            $messageType = 'success';
+        } else {
+            $message = 'กรุณากรอกข้อมูลให้ครบถ้วน';
+            $messageType = 'danger';
+        }
     }
 }
 
@@ -70,7 +76,7 @@ $products = $pdo->query("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Products — Gaming Store</title>
+    <title>Products — Nournia Shop</title>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -78,14 +84,24 @@ $products = $pdo->query("
     <!-- Sidebar -->
     <aside class="sidebar">
         <div class="sidebar-brand">
-            <h1>🎮 Gaming Store</h1>
-            <span>Inventory System</span>
+            <h1>🎮 Nournia Shop</h1>
+            <span>Gaming Gear Store</span>
         </div>
         <ul class="sidebar-nav">
             <li><a href="index.php"><span class="icon">📊</span> Dashboard</a></li>
             <li><a href="products.php" class="active"><span class="icon">📦</span> Products</a></li>
             <li><a href="sales.php"><span class="icon">💰</span> Sales</a></li>
         </ul>
+        <div class="sidebar-user">
+            <div class="user-info">
+                <div class="user-avatar"><?= strtoupper(mb_substr($currentUser['username'], 0, 1)) ?></div>
+                <div class="user-details">
+                    <span class="user-name"><?= htmlspecialchars($currentUser['username']) ?></span>
+                    <span class="user-role <?= $currentUser['role'] ?>"><?= $currentUser['role'] === 'admin' ? '🛠 Admin' : '👤 User' ?></span>
+                </div>
+            </div>
+            <a href="logout.php" class="btn-logout" title="ออกจากระบบ">🚪</a>
+        </div>
     </aside>
 
     <!-- Main -->
@@ -104,7 +120,9 @@ $products = $pdo->query("
         <div class="card">
             <div class="card-header">
                 <h3>รายการสินค้าทั้งหมด (<?= count($products) ?> รายการ)</h3>
+                <?php if (isAdmin()): ?>
                 <button class="btn btn-primary" onclick="openAddModal()">➕ เพิ่มสินค้า</button>
+                <?php endif; ?>
             </div>
             <div class="card-body">
                 <?php if (count($products) > 0): ?>
@@ -117,7 +135,9 @@ $products = $pdo->query("
                                 <th>หมวดหมู่</th>
                                 <th>ราคา</th>
                                 <th>Stock</th>
+                                <?php if (isAdmin()): ?>
                                 <th>จัดการ</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
@@ -140,12 +160,14 @@ $products = $pdo->query("
                                     ?>
                                     <span class="stock-badge <?= $stockClass ?>"><?= number_format($p['stock_quantity']) ?> ชิ้น</span>
                                 </td>
+                                <?php if (isAdmin()): ?>
                                 <td>
                                     <div class="actions">
                                         <button class="btn btn-secondary btn-sm" onclick='openEditModal(<?= json_encode($p) ?>)'>✏️ แก้ไข</button>
                                         <a href="products.php?delete=<?= $p['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('ยืนยันลบสินค้า <?= htmlspecialchars($p['name']) ?>?')">🗑️ ลบ</a>
                                     </div>
                                 </td>
+                                <?php endif; ?>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -162,6 +184,7 @@ $products = $pdo->query("
     </main>
 </div>
 
+<?php if (isAdmin()): ?>
 <!-- Add Product Modal -->
 <div class="modal-overlay" id="addModal">
     <div class="modal">
@@ -258,8 +281,10 @@ $products = $pdo->query("
         </form>
     </div>
 </div>
+<?php endif; ?>
 
 <script>
+<?php if (isAdmin()): ?>
 function openAddModal() {
     document.getElementById('addModal').classList.add('active');
 }
@@ -274,6 +299,7 @@ function openEditModal(product) {
     document.getElementById('edit-image').value = product.image_url || '';
     document.getElementById('editModal').classList.add('active');
 }
+<?php endif; ?>
 
 function closeModal(id) {
     document.getElementById(id).classList.remove('active');

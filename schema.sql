@@ -1,5 +1,15 @@
-CREATE DATABASE IF NOT EXISTS gaming_store;
-USE gaming_store;
+CREATE DATABASE IF NOT EXISTS nournia_shop;
+USE nournia_shop;
+
+-- Users table (Authentication)
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('user', 'admin') DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Categories table
 CREATE TABLE IF NOT EXISTS categories (
@@ -39,6 +49,10 @@ CREATE TABLE IF NOT EXISTS sale_items (
     FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Seed default admin (password: admin123)
+INSERT INTO users (username, email, password, role) VALUES
+('admin', 'admin@nournia.shop', '$2y$10$nSKw3PRq3vX/Tbwjesh.WuJ4ci9yfDXOPiY/8ZsegKlotz8hpK2/G', 'admin');
 
 -- Seed categories
 INSERT INTO categories (name) VALUES

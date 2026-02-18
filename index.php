@@ -1,5 +1,9 @@
 <?php
 require_once 'db.php';
+require_once 'auth.php';
+requireLogin();
+
+$currentUser = getCurrentUser();
 
 // Query stats
 $totalProducts = $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
@@ -24,7 +28,7 @@ $recentSales = $pdo->query("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard — Gaming Store</title>
+    <title>Dashboard — Nournia Shop</title>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -32,14 +36,24 @@ $recentSales = $pdo->query("
     <!-- Sidebar -->
     <aside class="sidebar">
         <div class="sidebar-brand">
-            <h1>🎮 Gaming Store</h1>
-            <span>Inventory System</span>
+            <h1>🎮 Nournia Shop</h1>
+            <span>Gaming Gear Store</span>
         </div>
         <ul class="sidebar-nav">
             <li><a href="index.php" class="active"><span class="icon">📊</span> Dashboard</a></li>
             <li><a href="products.php"><span class="icon">📦</span> Products</a></li>
             <li><a href="sales.php"><span class="icon">💰</span> Sales</a></li>
         </ul>
+        <div class="sidebar-user">
+            <div class="user-info">
+                <div class="user-avatar"><?= strtoupper(mb_substr($currentUser['username'], 0, 1)) ?></div>
+                <div class="user-details">
+                    <span class="user-name"><?= htmlspecialchars($currentUser['username']) ?></span>
+                    <span class="user-role <?= $currentUser['role'] ?>"><?= $currentUser['role'] === 'admin' ? '🛠 Admin' : '👤 User' ?></span>
+                </div>
+            </div>
+            <a href="logout.php" class="btn-logout" title="ออกจากระบบ">🚪</a>
+        </div>
     </aside>
 
     <!-- Main -->
@@ -59,7 +73,7 @@ $recentSales = $pdo->query("
             <div class="stat-card danger">
                 <div class="stat-icon">⚠️</div>
                 <div class="stat-value"><?= number_format($lowStock) ?></div>
-                <div class="stat-label">สินค้า Stock ต่ำ (&lt;5)</div>
+                <div class="stat-label">สินค้า Stock ต่ำ (<5)</div>
             </div>
             <div class="stat-card success">
                 <div class="stat-icon">💰</div>
