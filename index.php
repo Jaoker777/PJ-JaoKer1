@@ -5,23 +5,53 @@ requireLogin();
 
 $currentUser = getCurrentUser();
 
-// Query stats
-$totalProducts = $pdo->query("SELECT COUNT(*) FROM products")->fetchColumn();
-$lowStock = $pdo->query("SELECT COUNT(*) FROM products WHERE stock_quantity < 5")->fetchColumn();
-$totalSales = $pdo->query("SELECT COALESCE(SUM(total_amount), 0) FROM sales")->fetchColumn();
+// Fetch categories for filter
+$categories = $pdo->query("SELECT * FROM categories ORDER BY name")->fetchAll();
 
-// Recent sales
-$recentSales = $pdo->query("
-    SELECT s.id, s.sale_date, s.total_amount,
-           GROUP_CONCAT(p.name SEPARATOR ', ') as products,
-           SUM(si.quantity) as total_items
-    FROM sales s
-    LEFT JOIN sale_items si ON s.id = si.sale_id
-    LEFT JOIN products p ON si.product_id = p.id
-    GROUP BY s.id
-    ORDER BY s.sale_date DESC
-    LIMIT 5
-")->fetchAll();
+// Get filter parameters
+$searchQuery = trim($_GET['search'] ?? '');
+$categoryFilter = (int)($_GET['category'] ?? 0);
+
+// Build products query with filters
+$sql = "SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE 1=1";
+$params = [];
+
+if ($searchQuery !== '') {
+    $sql .= " AND (p.name LIKE ? OR p.description LIKE ?)";
+    $params[] = "%{$searchQuery}%";
+    $params[] = "%{$searchQuery}%";
+}
+
+if ($categoryFilter > 0) {
+    $sql .= " AND p.category_id = ?";
+    $params[] = $categoryFilter;
+}
+
+$sql .= " ORDER BY p.created_at DESC";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$products = $stmt->fetchAll();
+
+// Category icons mapping
+$categoryIcons = [
+    'Graphics Cards' => '🎴',
+    'Processors' => '⚡',
+    'RAM' => '🧠',
+    'Storage' => '💾',
+    'Monitors' => '🖥️',
+    'Peripherals' => '🎧',
+];
+
+// Product gradient mapping by category
+$categoryGradients = [
+    'Graphics Cards' => 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    'Processors' => 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    'RAM' => 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    'Storage' => 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    'Monitors' => 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    'Peripherals' => 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+];
 ?>
 <!DOCTYPE html>
 <html lang="th">
@@ -29,6 +59,7 @@ $recentSales = $pdo->query("
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard — Nournia Shop</title>
+    <meta name="description" content="Nournia Shop — ร้านเกมมิ่งเกียร์ออนไลน์ คุณภาพสูง ราคาดี">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -40,7 +71,7 @@ $recentSales = $pdo->query("
             <span>Gaming Gear Store</span>
         </div>
         <ul class="sidebar-nav">
-            <li><a href="index.php" class="active"><span class="icon">📊</span> Dashboard</a></li>
+            <li><a href="index.php" class="active"><span class="icon">🏠</span> Dashboard</a></li>
             <li><a href="products.php"><span class="icon">📦</span> Products</a></li>
             <li><a href="sales.php"><span class="icon">💰</span> Sales</a></li>
         </ul>
@@ -58,71 +89,162 @@ $recentSales = $pdo->query("
 
     <!-- Main -->
     <main class="main-content">
-        <div class="page-header">
-            <h2>📊 Dashboard</h2>
-            <p>ภาพรวมระบบจัดการสต็อกสินค้า</p>
+        <!-- Hero Header -->
+        <div class="shop-hero">
+            <div class="hero-text">
+                <h2>🎮 สินค้าเกมมิ่งเกียร์</h2>
+                <p>เลือกช้อปอุปกรณ์เกมมิ่งคุณภาพสูง ราคาดีที่สุด</p>
+            </div>
+            <!-- Search Bar -->
+            <div class="search-wrapper">
+                <form method="GET" class="search-form" id="searchForm">
+                    <?php if ($categoryFilter > 0): ?>
+                    <input type="hidden" name="category" value="<?= $categoryFilter ?>">
+                    <?php endif; ?>
+                    <div class="search-input-group">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" name="search" id="searchInput" class="search-input"
+                               placeholder="ค้นหาสินค้า... เช่น RTX 4090, Razer, Samsung"
+                               value="<?= htmlspecialchars($searchQuery) ?>"
+                               autocomplete="off">
+                        <?php if ($searchQuery): ?>
+                        <a href="index.php<?= $categoryFilter ? '?category='.$categoryFilter : '' ?>" class="search-clear" title="ล้างการค้นหา">✕</a>
+                        <?php endif; ?>
+                    </div>
+                </form>
+            </div>
         </div>
 
-        <!-- Stat Cards -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">📦</div>
-                <div class="stat-value"><?= number_format($totalProducts) ?></div>
-                <div class="stat-label">สินค้าทั้งหมด</div>
-            </div>
-            <div class="stat-card danger">
-                <div class="stat-icon">⚠️</div>
-                <div class="stat-value"><?= number_format($lowStock) ?></div>
-                <div class="stat-label">สินค้า Stock ต่ำ (<5)</div>
-            </div>
-            <div class="stat-card success">
-                <div class="stat-icon">💰</div>
-                <div class="stat-value">฿<?= number_format($totalSales, 2) ?></div>
-                <div class="stat-label">ยอดขายรวม</div>
-            </div>
+        <!-- Category Filter -->
+        <div class="category-filter">
+            <a href="index.php<?= $searchQuery ? '?search='.urlencode($searchQuery) : '' ?>"
+               class="category-pill <?= $categoryFilter === 0 ? 'active' : '' ?>">
+                🏷️ ทั้งหมด
+            </a>
+            <?php foreach ($categories as $cat): ?>
+            <a href="index.php?category=<?= $cat['id'] ?><?= $searchQuery ? '&search='.urlencode($searchQuery) : '' ?>"
+               class="category-pill <?= $categoryFilter === $cat['id'] ? 'active' : '' ?>">
+                <?= $categoryIcons[$cat['name']] ?? '📁' ?> <?= htmlspecialchars($cat['name']) ?>
+            </a>
+            <?php endforeach; ?>
         </div>
 
-        <!-- Recent Sales -->
-        <div class="card">
-            <div class="card-header">
-                <h3>🕐 ยอดขายล่าสุด</h3>
-                <a href="sales.php" class="btn btn-primary btn-sm">ดูทั้งหมด</a>
-            </div>
-            <div class="card-body">
-                <?php if (count($recentSales) > 0): ?>
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>วันที่</th>
-                                <th>สินค้า</th>
-                                <th>จำนวน</th>
-                                <th>ยอดรวม</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($recentSales as $sale): ?>
-                            <tr>
-                                <td><?= $sale['id'] ?></td>
-                                <td><?= date('d/m/Y H:i', strtotime($sale['sale_date'])) ?></td>
-                                <td><?= htmlspecialchars($sale['products'] ?? '-') ?></td>
-                                <td><?= number_format($sale['total_items'] ?? 0) ?> ชิ้น</td>
-                                <td class="price">฿<?= number_format($sale['total_amount'], 2) ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-                <?php else: ?>
-                <div class="empty-state">
-                    <div class="icon">🛒</div>
-                    <p>ยังไม่มีรายการขาย</p>
-                </div>
-                <?php endif; ?>
-            </div>
+        <!-- Results Info -->
+        <div class="results-info">
+            <span>แสดง <strong><?= count($products) ?></strong> สินค้า</span>
+            <?php if ($searchQuery || $categoryFilter): ?>
+            <a href="index.php" class="clear-filters">ล้างตัวกรอง ✕</a>
+            <?php endif; ?>
         </div>
+
+        <!-- Product Grid -->
+        <?php if (count($products) > 0): ?>
+        <div class="product-grid">
+            <?php foreach ($products as $p):
+                $gradient = $categoryGradients[$p['category_name']] ?? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                $icon = $categoryIcons[$p['category_name']] ?? '📦';
+            ?>
+            <div class="product-card" data-id="<?= $p['id'] ?>">
+                <div class="product-image" style="background: <?= $gradient ?>">
+                    <?php if (!empty($p['image_url'])): ?>
+                    <img src="<?= htmlspecialchars($p['image_url']) ?>" alt="<?= htmlspecialchars($p['name']) ?>" loading="lazy">
+                    <?php else: ?>
+                    <div class="product-image-placeholder">
+                        <span class="placeholder-icon"><?= $icon ?></span>
+                    </div>
+                    <?php endif; ?>
+                    <span class="product-category-badge"><?= htmlspecialchars($p['category_name']) ?></span>
+                    <?php if ($p['stock_quantity'] < 5): ?>
+                    <span class="product-stock-warning">เหลือน้อย!</span>
+                    <?php endif; ?>
+                </div>
+                <div class="product-info">
+                    <h3 class="product-name"><?= htmlspecialchars($p['name']) ?></h3>
+                    <?php if ($p['description']): ?>
+                    <p class="product-desc"><?= htmlspecialchars(mb_substr($p['description'], 0, 50)) ?></p>
+                    <?php endif; ?>
+                    <div class="product-bottom">
+                        <div class="product-price">
+                            <span class="price-label">ราคา</span>
+                            <span class="price-value">฿<?= number_format($p['price'], 2) ?></span>
+                        </div>
+                        <button class="btn-add-cart" onclick="addToCart(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['name'])) ?>', <?= $p['price'] ?>, <?= $p['stock_quantity'] ?>)" <?= $p['stock_quantity'] <= 0 ? 'disabled' : '' ?>>
+                            <?= $p['stock_quantity'] > 0 ? '🛒 Add to Cart' : '❌ หมดสต็อก' ?>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <div class="empty-state" style="margin-top: 3rem;">
+            <div class="icon">🔍</div>
+            <p>ไม่พบสินค้าที่ค้นหา</p>
+            <a href="index.php" class="btn btn-primary" style="margin-top: 1rem;">ดูสินค้าทั้งหมด</a>
+        </div>
+        <?php endif; ?>
     </main>
 </div>
+
+<!-- Toast Notification -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ===== Cart Management =====
+let cart = JSON.parse(localStorage.getItem('nournia_cart') || '[]');
+
+function addToCart(id, name, price, stock) {
+    const existing = cart.find(item => item.id === id);
+    if (existing) {
+        if (existing.qty >= stock) {
+            showToast('⚠️ สินค้าในตะกร้าถึงจำนวน stock สูงสุดแล้ว', 'warning');
+            return;
+        }
+        existing.qty += 1;
+    } else {
+        cart.push({ id, name, price, qty: 1 });
+    }
+    localStorage.setItem('nournia_cart', JSON.stringify(cart));
+    showToast(`✅ เพิ่ม "${name}" ลงตะกร้าแล้ว!`, 'success');
+    animateCartButton(id);
+}
+
+function animateCartButton(productId) {
+    const card = document.querySelector(`.product-card[data-id="${productId}"]`);
+    if (!card) return;
+    const btn = card.querySelector('.btn-add-cart');
+    btn.classList.add('cart-added');
+    btn.textContent = '✅ เพิ่มแล้ว!';
+    setTimeout(() => {
+        btn.classList.remove('cart-added');
+        btn.textContent = '🛒 Add to Cart';
+    }, 1500);
+}
+
+// ===== Toast =====
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add('show'));
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
+}
+
+// ===== Live Search (debounced) =====
+let searchTimeout;
+document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        document.getElementById('searchForm').submit();
+    }, 600);
+});
+</script>
 </body>
 </html>
